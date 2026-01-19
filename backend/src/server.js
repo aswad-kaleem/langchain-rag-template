@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { config } from "./config/env.js";
 import { initializeRag } from "./rag/ragChain.js";
-import { registerChatRoute } from "./api/chatRoute.js";
+import { registerChatRoutes } from "./routes/chat.js";
 
 async function buildServer() {
   const fastify = Fastify({
@@ -18,14 +18,7 @@ async function buildServer() {
     credentials: true
   });
 
-  fastify.addHook("onRequest", async (request, reply) => {
-    request.log.debug(
-      { url: request.url, method: request.method },
-      "Incoming request"
-    );
-  });
-
-  await registerChatRoute(fastify);
+  await registerChatRoutes(fastify);
 
   return fastify;
 }

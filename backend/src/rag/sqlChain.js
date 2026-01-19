@@ -359,6 +359,19 @@ function buildRuleBasedSql(question) {
   const q = (question || "").toLowerCase();
   if (!q) return "";
 
+  const leaveTypeMatch = q.match(/\b(casual|sick|annual|earned|unpaid|paid)\s+leave\b/i);
+  const employeeNameMatch = q.match(/\bof\s+([a-zA-Z\s.'-]+)$/i);
+
+  if (leaveTypeMatch) {
+    const leaveType = leaveTypeMatch[1].toLowerCase();
+    const name = employeeNameMatch ? employeeNameMatch[1].trim() : "";
+    const nameFilter = name
+      ? ` AND employees.employee_name LIKE '%${name.replace(/'/g, "''")}%'`
+      : "";
+
+    return `SELECT employees.employee_name, leave_types.leave_name AS category_name, employee_leaves.remaining_leaves, employee_leaves.year FROM employee_leaves JOIN employees ON employee_leaves.employee_id = employees.id JOIN leave_types ON employee_leaves.leave_type_id = leave_types.id WHERE LOWER(leave_types.leave_name) LIKE '%${leaveType}%'${nameFilter} LIMIT 50`;
+  }
+
   const wantsActivityLogs =
     q.includes("activity log") ||
     q.includes("activity logs") ||
@@ -464,7 +477,3 @@ export async function runSqlPage(previousSql, originalQuestion, offset, limit) {
   return { sql: pagedSql, answer, rows: enrichedRows };
 }
 
-export function getSqlGenerationChain() {
-  const llm = buildLlm({ temperature: 0 });
-  return sqlPrompt.pipe(llm).pipe(new StringOutputParser());
-}

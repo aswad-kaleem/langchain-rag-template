@@ -1,23 +1,22 @@
-import { classifyQuestionIntent as detectIntent } from "./intentChain.js";
+import { classifyQuestionIntent } from "./intentChain.js";
 import { runRag } from "./ragChain.js";
-import { runSqlChain as runSqlAgent, runSqlPage } from "./sqlChain.js";
+import { runSqlChain, runSqlPage } from "./sqlChain.js";
+
+const sessionState = new Map();
+
+function getSessionState(sessionId) {
+  if (!sessionId) return null;
+  if (!sessionState.has(sessionId)) {
+    sessionState.set(sessionId, { lastDatabaseQuery: null });
+  }
+  return sessionState.get(sessionId);
+}
 
 function buildGeneralChatAnswer(question) {
   const trimmed = (question || "").trim();
   const greeting = "Hi there! How can I help you today?";
   if (!trimmed) return greeting;
   return `${greeting} (You said: ${trimmed})`;
-}
-const sessionState = new Map();
-
-function getSessionBucket(sessionId) {
-  if (!sessionId) return null;
-  let bucket = sessionState.get(sessionId);
-  if (!bucket) {
-    bucket = { lastDatabaseQuery: null };
-    sessionState.set(sessionId, bucket);
-  }
-  return bucket;
 }
 
 function detectPaginationDirection(question) {
@@ -29,13 +28,13 @@ function detectPaginationDirection(question) {
     /^show more\b/,
     /^more\b/,
     /\bmore results\b/,
-    /\bnext set\b/,
+    /\bnext set\b/
   ];
 
   const prevPatterns = [
     /^(previous|previous page|prev)\b/,
     /\bgo back\b/,
-    /\bback\b/,
+    /\bback\b/
   ];
 
   if (nextPatterns.some((re) => re.test(q))) return "next";
@@ -43,100 +42,102 @@ function detectPaginationDirection(question) {
   return null;
 }
 
+function buildDatabaseAnswer(result, paginated = false) {
+  const explanation = paginated
+    ? "This answer is based on live HR database records (paginated results)."
+    : "This answer is based on live HR database records.";
+  const combinedAnswer = result?.answer
+    ? `${explanation}\n\n${result.answer}`
+    : explanation;
+
+  return { ...result, answer: combinedAnswer };
+}
+
 export async function routeQuestion(question, sessionId) {
   const trimmedQuestion = (question || "").trim();
+  const session = getSessionState(sessionId);
   const direction = detectPaginationDirection(trimmedQuestion);
-  const bucket = getSessionBucket(sessionId);
-  
 
   if (direction) {
-    if (bucket && bucket.lastDatabaseQuery) {
-      const { sql, originalQuestion, offset = 0, limit = 50 } =
-        bucket.lastDatabaseQuery;
-
-      const pageSize = Number.isFinite(limit) && limit > 0 ? limit : 50;
-      const newOffset =
-        direction === "next"
-          ? offset + pageSize
-          : Math.max(0, offset - pageSize);
-
-      const pageResult = await runSqlPage(
-        sql,
-        originalQuestion,
-        newOffset,
-        pageSize
-      );
-
-      if (pageResult?.sql) {
-        bucket.lastDatabaseQuery = {
-          sql: pageResult.sql,
-          originalQuestion,
-          offset: newOffset,
-          limit: pageSize,
-        };
-      }
-
-      const explanation =
-        "This answer is based on live HR database records (paginated results).";
-      const combinedAnswer = pageResult?.answer
-        ? `${explanation}\n\n${pageResult.answer}`
-        : explanation;
-
+    if (!session?.lastDatabaseQuery) {
       return {
-        intent: "DATABASE_QUERY",
-        source: "database",
-        ...pageResult,
-        answer: combinedAnswer,
+        intent: "GENERAL_CHAT",
+        source: "general",
+        answer:
+          "I don't have any earlier database results to navigate. Please ask a data question first."
       };
     }
 
-    const answer =
-      "I don't have any earlier database results to navigate. Please ask a data question first.";
-    return { intent: "GENERAL_CHAT", source: "general", answer };
+    const { sql, originalQuestion, offset = 0, limit = 50 } =
+      session.lastDatabaseQuery;
+    const pageSize = Number.isFinite(limit) && limit > 0 ? limit : 50;
+    const newOffset =
+      direction === "next"
+        ? offset + pageSize
+        : Math.max(0, offset - pageSize);
+
+    const pageResult = await runSqlPage(
+      sql,
+      originalQuestion,
+      newOffset,
+      pageSize
+    );
+
+    if (pageResult?.sql) {
+      session.lastDatabaseQuery = {
+        sql: pageResult.sql,
+        originalQuestion,
+        offset: newOffset,
+        limit: pageSize
+      };
+    }
+
+    return {
+      intent: "DATABASE_QUERY",
+      source: "database",
+      ...buildDatabaseAnswer(pageResult, true)
+    };
   }
 
-  const intent = await detectIntent(trimmedQuestion);
-    console.log("intent____________________________", intent)
-  switch (intent) {
-    case "DATABASE_QUERY": {
-      const result = await runSqlAgent(trimmedQuestion);
+  const intent = await classifyQuestionIntent(trimmedQuestion);
 
-      if (bucket && result?.sql) {
-        const match = result.sql.match(/\blimit\s+(\d+)/i);
-        const limit = match ? parseInt(match[1], 10) : 50;
-        bucket.lastDatabaseQuery = {
-          sql: result.sql,
-          originalQuestion: trimmedQuestion,
-          offset: 0,
-          limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
-        };
-      }
-
-      const explanation =
-        "This answer is based on live HR database records.";
-      const combinedAnswer = result?.answer
-        ? `${explanation}\n\n${result.answer}`
-        : explanation;
-
-      return { intent, source: "database", ...result, answer: combinedAnswer };
+  if (intent === "DATABASE_QUERY") {
+    const result = await runSqlChain(trimmedQuestion);
+    if (session && result?.sql) {
+      const match = result.sql.match(/\blimit\s+(\d+)/i);
+      const limit = match ? parseInt(match[1], 10) : 50;
+      session.lastDatabaseQuery = {
+        sql: result.sql,
+        originalQuestion: trimmedQuestion,
+        offset: 0,
+        limit: Number.isFinite(limit) && limit > 0 ? limit : 50
+      };
     }
-    case "RAG_QUERY": {
-      const result = await runRag(trimmedQuestion);
-      const explanation =
-        "This answer is based on company documents and knowledge-base content.";
-      const combinedAnswer = result?.answer
-        ? `${explanation}\n\n${result.answer}`
-        : explanation;
 
-      return { intent, source: "rag", ...result, answer: combinedAnswer };
-    }
-    case "GENERAL_CHAT":
-    default: {
-      const base = buildGeneralChatAnswer(trimmedQuestion);
-      const explanation =
-        "This is a general conversational response and does not use internal company data.";
-      const answer = `${explanation}\n\n${base}`;
-      return { intent: "GENERAL_CHAT", source: "general", answer };
-    }
+    return {
+      intent,
+      source: "database",
+      ...buildDatabaseAnswer(result)
+    };
   }
+
+  if (intent === "RAG_QUERY") {
+    const result = await runRag(trimmedQuestion);
+    const explanation =
+      "This answer is based on company documents and knowledge-base content.";
+    const combinedAnswer = result?.answer
+      ? `${explanation}\n\n${result.answer}`
+      : explanation;
+
+    return { intent, source: "rag", ...result, answer: combinedAnswer };
+  }
+
+  const base = buildGeneralChatAnswer(trimmedQuestion);
+  const explanation =
+    "This is a general conversational response and does not use internal company data.";
+  return {
+    intent: "GENERAL_CHAT",
+    source: "general",
+    answer: `${explanation}\n\n${base}`
+  };
 }

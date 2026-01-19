@@ -20,6 +20,11 @@ export const semanticSchema = {
       "personnel",
       "company employee",
       "employee record",
+      "developers",
+      "designers",
+      "managers",
+      "interns",  
+      "developer"  
     ],
 
     columns: {
@@ -676,6 +681,13 @@ export const FIELD_KEYWORDS = [
   "status",
   "present",
   "absent",
+  "late",
+  "lateness",
+  "tardy",
+  "absence",
+  "missing check in",
+  "issue",
+  "issues",
 
   // Leave fields
   "leave year",
@@ -704,7 +716,9 @@ export const FIELD_KEYWORDS = [
 
 export const SQL_ACTION_KEYWORDS = [
   "list",
+  "list all",
   "show",
+  "show all",
   "get",
   "fetch",
   "display",
@@ -730,38 +744,139 @@ export const SQL_ACTION_KEYWORDS = [
   "records",
 ];
 
-export const RAG_KEYWORDS = [
-  "policy",
-  "policies",
-  "company policy",
-  "leave policy",
-  "attendance policy",
-
-  "procedure",
-  "process",
-  "workflow",
-  "guidelines",
-  "rules",
-
-  "onboarding",
-  "offboarding",
-  "hr policy",
-
-  "product",
-  "products",
-  "service",
-  "services",
-
-  "company info",
-  "about company",
-  "convier solutions",
-  "organization info",
-];
-
-
 export const STRUCTURED_KEYWORDS = [
   ...ENTITY_KEYWORDS,
   ...FIELD_KEYWORDS,
-  ...SQL_ACTION_KEYWORDS,
 ];
 
+export const RAG_KEYWORDS = [
+  // ===== Company Identity & Info =====
+  "convier solutions",
+  "company info",
+  "company information",
+  "organization info",
+  "about us",
+  "about the company",
+  "company overview",
+  "overview",
+  "mission",
+  "vision",
+  "culture",
+  "values",
+
+  // ===== Leadership =====
+  "founder",
+  "ceo",
+  "chief executive officer",
+  "muhammad farhan akram",
+  "management",
+  "leadership",
+
+  // ===== Location & Contact =====
+  "address",
+  "location",
+  "office address",
+  "head office",
+  "headquarters",
+  "lahore office",
+  "college road",
+  "township",
+  "phone",
+  "contact",
+  "contact details",
+  "email",
+  "website",
+
+  // ===== HR Policies (NON-DB) =====
+  "policy",
+  "policies",
+  "hr policy",
+  "hr policies",
+  "company policy",
+  "leave policy",
+  "employee leave policy",
+  "attendance policy",
+  "employment terms",
+  "terms and conditions",
+  "employment terms and conditions",
+  "general guidelines",
+  "rules",
+  "regulations",
+  "disciplinary action",
+
+  // ===== Leave Rules & Explanations =====
+  "casual leave policy",
+  "sick leave policy",
+  "leave rules",
+  "leave guidelines",
+  "leave carryover",
+  "leave deduction",
+  "salary deduction",
+  "probation leave rules",
+  "bridge leave",
+  "bridge day policy",
+  "half day policy",
+  "full day off",
+  "unplanned absence",
+  "leave application process",
+
+  // ===== Attendance Rules (Explanation, not records) =====
+  "attendance rules",
+  "office hours",
+  "working hours",
+  "check in time",
+  "check out time",
+  "lunch break",
+  "late arrival policy",
+  "half day rules",
+  "late sittings",
+  "change in timings",
+  "work from home rules",
+
+  // ===== Employment Lifecycle =====
+  "probation period",
+  "notice period",
+  "termination",
+  "resignation",
+  "pre employment checks",
+  "salary settlement",
+  "final settlement",
+  "client confidentiality",
+  "non disclosure",
+
+  // ===== Products (RAG only, not DB) =====
+  "product",
+  "products",
+  "software products",
+  "mern products",
+  "php products",
+
+  "jurist ai",
+  "atticus ai",
+  "litig ai",
+  "fandex",
+  "fandex mobile app",
+  "fandex web",
+  "paradigm",
+  "fantasy 365",
+  "news app",
+  "xotic labs",
+  "cabo villas",
+
+  // ===== Services =====
+  "service",
+  "services",
+  "web applications",
+  "mobile applications",
+  "desktop applications",
+  "database designing",
+  "digital marketing",
+  "game development",
+
+  // ===== Technology & Expertise =====
+  "mern stack",
+  "web development",
+  "mobile development",
+  "software development",
+  "technology solutions",
+];

@@ -5,7 +5,6 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { FaissStore } from "@langchain/community/vectorstores/faiss";
 import { loadFileDocuments } from "./loaders/fileLoader.js";
-import { loadStructuredDocuments } from "./loaders/structuredLoader.js";
 import { config } from "../config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -36,16 +35,10 @@ export async function initializeVectorStore() {
   }
 
   // 2) Fallback: build documents, chunks, and a new FAISS store, then persist it
-  const [fileDocs] = await Promise.all([
-    loadFileDocuments(),
-    // loadStructuredDocuments()
-  ]);
+  const fileDocs = await loadFileDocuments();
+  const allDocs = [...fileDocs];
 
-  const allDocs = [...fileDocs, ];
-
-  console.log(
-    `Loaded ${fileDocs.length} unstructured file documents and ${structuredDocs.length} structured documents for RAG.`
-  );
+  console.log(`Loaded ${fileDocs.length} unstructured documents for RAG.`);
 
   if (!allDocs.length) {
     console.warn(

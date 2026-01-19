@@ -17,7 +17,6 @@
     "dotenv": "^16.4.0",
     "faiss-node": "^0.5.1",
     "fastify": "^4.28.1",
-    "langchain": "^1.2.10",
     "mysql2": "^3.11.0",
     "openai": "^6.16.0"
   },

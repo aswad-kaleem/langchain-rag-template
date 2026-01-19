@@ -2,7 +2,11 @@ import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { config } from "../config/env.js";
-import { STRUCTURED_KEYWORDS } from "./semanticSchema.js";
+import {
+  RAG_KEYWORDS,
+  STRUCTURED_KEYWORDS,
+  SQL_ACTION_KEYWORDS
+} from "./semanticSchema.js";
 
 const intentPrompt = ChatPromptTemplate.fromTemplate(
   `You are an intent classifier for Convier Solutions.
@@ -37,116 +41,20 @@ function ruleBasedIntent(question) {
   if (!question) return null;
   const q = question.toLowerCase();
 
-  // Obvious RAG/document queries: policies, products, services, generic company info
-  const ragKeywords = [
-    "policy",
-    "policies",
-    "refund",
-    "onboarding",
-    "procedure",
-    "process",
-    "product",
-    "products",
-    "service",
-    "services",
-    "company info",
-    "convier solutions",
-  ];
-  const isRagDocQuestion = ragKeywords.some((kw) => q.includes(kw));
+  const hasAction = SQL_ACTION_KEYWORDS.some((kw) => q.includes(kw));
+  const hasStructured = STRUCTURED_KEYWORDS.some((kw) => q.includes(kw));
+  const hasRag = RAG_KEYWORDS.some((kw) => q.includes(kw));
 
-  // Detect questions that clearly target structured HR/operations data,
-  // regardless of how the LLM might classify them.
-  const looksStructured = STRUCTURED_KEYWORDS.some((kw) => q.includes(kw));
+  // Action-first: if the user asks to do something and references structured
+  // entities, route to the database. If they ask to do something and only
+  // reference document topics, route to RAG.
+  if (hasAction && hasStructured) return "DATABASE_QUERY";
+  if (hasAction && hasRag && !hasStructured) return "RAG_QUERY";
 
-  // Clear general chat: greetings, thanks, small talk
-  const generalPatterns = [
-    /^(hi|hello|hey|salam|asa|good\s+(morning|evening|afternoon))/i,
-    /(how are you|thank you|thanks|what's up|whats up|bye)/i,
-  ];
-  if (generalPatterns.some((re) => re.test(question))) {
-    return "GENERAL_CHAT";
-  }
+  // No action verb: fall back to keyword-only signals (minimal rules).
+  if (hasStructured && !hasRag) return "DATABASE_QUERY";
+  if (hasRag && !hasStructured) return "RAG_QUERY";
 
-  // Company-level info (founder, CEO, address, overview, about the
-  // organization itself) should come from documents like basic_info,
-  // not from the transactional database.
-  const companyInfoPatterns = [
-    /convier solutions/i,
-    /company\s+info/i,
-    /about\s+company/i,
-    /company\s+name/i,
-    /founder/i,
-    /\bceo\b/i,
-    /address\s*\/?\s*location/i,
-  ];
-  if (companyInfoPatterns.some((re) => re.test(question))) {
-    return "RAG_QUERY";
-  }
-
-  // Strong RAG/document signals win over generic structured hints so that
-  // things like "leave policy" go to documents instead of SQL.
-  if (isRagDocQuestion && !/remaining\s+leaves?/i.test(question)) {
-    return "RAG_QUERY";
-  }
-
-  // If it clearly targets structured HR/data concepts, force DATABASE_QUERY
-  // so that only the SQL chain, not RAG, handles factual data.
-  if (looksStructured) {
-    return "DATABASE_QUERY";
-  }
-
-  // Strong SQL signals: list/show/count + core HR/data words
-  const sqlKeywords = [
-    "employee",
-    "employees",
-    "attendance",
-    "attendances",
-    "check in",
-    "check-out",
-    "check out",
-    "salary",
-    "salaries",
-    "leave",
-    "leaves",
-    "remaining leaves",
-    "allowance",
-    "allowances",
-    "role",
-    "roles",
-    "permission",
-    "permissions",
-    "public holiday",
-    "department",
-    "departments",
-    "activity log",
-  ];
-
-  const sqlActionPatterns = [
-    /(list|show|give|get|fetch|display)\s+all/i,
-    /(how many|count of|total number of)/i,
-    /(remaining|balance)\s+leaves?/i,
-    /who is\s+.+/i,
-  ];
-
-  const hasSqlKeyword = sqlKeywords.some((kw) => q.includes(kw));
-  const hasSqlAction = sqlActionPatterns.some((re) => re.test(question));
-
-  if (hasSqlKeyword && hasSqlAction) {
-    return "DATABASE_QUERY";
-  }
-
-  // Person/employee lookups: "who is <name>", "tell me about <name>"
-  if (/who is\s+.+/i.test(question) || /tell me about\s+.+/i.test(question)) {
-    // If this is clearly about the company itself (founder, CEO,
-    // "who is Convier Solutions" style questions), treat it as a
-    // document / RAG query instead of a database lookup.
-    if (companyInfoPatterns.some((re) => re.test(question))) {
-      return "RAG_QUERY";
-    }
-    return "DATABASE_QUERY";
-  }
-
-  // No clear rule-based hit – let the LLM decide.
   return null;
 }
 
@@ -167,44 +75,11 @@ export async function classifyQuestionIntent(question) {
   // If the LLM returns something unexpected, fall back conservatively
   // but still enforce that structured questions must go to SQL.
   const q = (question || "").toLowerCase();
-  const structuredKeywords = [
-    "employee",
-    "employees",
-    "attendance",
-    "attendances",
-    "check in",
-    "check-out",
-    "check out",
-    "salary",
-    "salaries",
-    "leave",
-    "leaves",
-    "remaining leaves",
-    "allowance",
-    "allowances",
-    "role",
-    "roles",
-    "permission",
-    "permissions",
-    "public holiday",
-    "department",
-    "departments",
-    "activity log",
-    "office email",
-    "joining date",
-    "employee id",
-    "attendance device id",
-  ];
-
-  if (structuredKeywords.some((kw) => q.includes(kw))) {
+  if (STRUCTURED_KEYWORDS.some((kw) => q.includes(kw))) {
     return "DATABASE_QUERY";
   }
 
   // Conservative fallback keeps chat safe and avoids accidental
   // database access when we are unsure.
   return "RAG_QUERY";
-}
-
-export function getIntentChain() {
-  return buildIntentChain();
 }
