@@ -23,8 +23,40 @@ export const config = {
   dbPort: numberFromEnv("DB_PORT", 3306),
   dbUser: process.env.DB_USER || "root",
   dbPassword: process.env.DB_PASSWORD || "",
-  dbName: process.env.DB_NAME || "cs_management",
-  dbTableName: process.env.DB_TABLE_NAME || "knowledge_base"
+  dbName: process.env.DB_NAME || "csms_db_v1_2026",
+  // Comma-separated list so both the RAG structured loader and
+  // SQL Agent Chain can see the main HR tables by default.
+  dbTableName:
+    process.env.DB_TABLE_NAME ||
+    [
+      "activity_logs",
+      "allowances",
+      "allowance_details",
+      "allowance_items",
+      "attendances",
+      "attendance_device_info",
+      "bank_info",
+      "configurations",
+      "departments",
+      "employees",
+      "employee_allowances",
+      "employee_dependent",
+      "employee_documents",
+      "employee_leaves",
+      "employee_roles",
+      "employee_salary_records",
+      "employment_types",
+      "leave_types",
+      "migrations",
+      "migrations_lock",
+      "permissions",
+      "public_holidays",
+      "relation_types",
+      "requested_leaves",
+      "roles",
+      "role_permissions",
+      "users"
+    ].join(",")
 };
 
 if (!config.openaiApiKey) {

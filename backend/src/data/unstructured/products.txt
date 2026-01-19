@@ -1,0 +1,31 @@
+Products Developed by Convier Solutions:
+
+Convier Solutions has developed a diverse portfolio of software products tailored to different business needs. Their offerings include:
+
+MERN Stack Products:
+Convier Solutions excels in modern web and mobile solutions using the MERN stack. Notable products include:
+
+Jurist AI – an AI-driven legal assistant
+
+Atticus AI – intelligent legal research platform
+
+Litig AI – litigation support system
+
+Fandex Mobile App – mobile experience for Fandex services
+
+Paradigm – versatile business management tool
+
+Fantasy 365 – interactive fantasy sports platform
+
+News App – curated news aggregation application
+
+Xotic Labs – innovative experimental projects
+
+PHP-Based Products:
+They also maintain PHP-based solutions for web applications, such as:
+
+Fandex (Web) – web version of the Fandex platform
+
+Cabo Villas – property management web solution
+
+Together, these 10 products demonstrate Convier Solutions’ expertise across multiple technology stacks, delivering both mobile and web solutions to meet diverse client requirements.

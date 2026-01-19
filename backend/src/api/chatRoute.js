@@ -1,4 +1,4 @@
-import { getChatChain } from "../rag/ragChain.js";
+import { routeQuestion } from "../rag/routerChain.js";
 
 /**
  * Register /chat routes.
@@ -9,8 +9,6 @@ import { getChatChain } from "../rag/ragChain.js";
  * Query: ?stream=true to enable server-sent streaming.
  */
 export async function registerChatRoute(fastify) {
-  const chain = getChatChain();
-
   fastify.post("/chat", async (request, reply) => {
     const { question, sessionId } = request.body || {};
     const { stream } = request.query || {};
@@ -23,21 +21,17 @@ export async function registerChatRoute(fastify) {
     }
 
     const session = typeof sessionId === "string" ? sessionId : undefined;
-    const wantsStream = String(stream).toLowerCase() === "true";
+    const wantsStream = false; // streaming disabled for now
 
     // Non-streaming JSON response
     if (!wantsStream) {
       try {
-        // RunnableWithMessageHistory expects { messages: [...] } format
-        const answer = await chain.invoke(
-          { messages: [{ role: "user", content: question }] },
-          {
-            configurable: {
-              sessionId: session
-            }
-          }
-        );
-        return { answer };
+        const result = await routeQuestion(question, session);
+        return {
+          answer: result?.answer,
+          intent: result?.intent,
+          source: result?.source
+        };
       } catch (err) {
         request.log.error({ err }, "Error during chat invocation");
         reply.code(500);

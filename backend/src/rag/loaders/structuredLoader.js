@@ -5,17 +5,20 @@ import { config } from "../../config/env.js";
 // Table-specific "title" field preferences to produce better summaries
 // while still embedding all columns.
 const TITLE_FIELDS_BY_TABLE = {
+  activity_logs: ["module", "action"],
   allowances: ["allowance_type"],
   allowance_details: ["allowance_amount"],
   allowance_items: ["allowance_item", "allowance_description"],
   attendances: ["reason", "status"],
   attendance_device_info: ["name"],
   bank_info: ["bank_name", "account_holder_name"],
+  configurations: ["config_key"],
   create_public_holidays: ["description"],
   departments: ["department_name", "description"],
   employees: ["employee_name", "designation", "department"],
   employee_dependent: ["name"],
   employee_documents: ["document_name", "employee_document"],
+  employee_allowances: ["allowance_type", "payment_type"],
   employee_leaves: [],
   employee_roles: [],
   employee_salary_records: [],
@@ -27,7 +30,9 @@ const TITLE_FIELDS_BY_TABLE = {
   requested_leaves: ["leave_name", "employee_reason"],
   roles: ["role_name"],
   role_permissions: [],
-  users: ["first_name", "last_name", "email"]
+  users: ["first_name", "last_name", "email"],
+  public_holidays: ["name"],
+  employment_types: ["employee_type"]
 };
 
 // Tables that are logically part of an employee "profile". We'll build
