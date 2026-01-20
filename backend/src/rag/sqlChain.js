@@ -405,10 +405,76 @@ function applyLimitOffset(sql, limit, offset) {
   return `${cleaned} LIMIT ${safeLimit} OFFSET ${safeOffset}`;
 }
 
-export async function runSqlChain(question) {
+function extractEmployeeNameFromHistory(history = []) {
+  if (!Array.isArray(history) || history.length === 0) return "";
+
+  const reversed = [...history].reverse();
+  for (const msg of reversed) {
+    const text = (msg?.content || "").trim();
+    if (!text) continue;
+
+    const whoIsMatch = text.match(/\bwho\s+is\s+([a-zA-Z\s.'-]+)\b/i);
+    if (whoIsMatch) return whoIsMatch[1].trim();
+
+    const aboutMatch = text.match(/\babout\s+([a-zA-Z\s.'-]+)\b/i);
+    if (aboutMatch) return aboutMatch[1].trim();
+
+    const isMatch = text.match(/\b([A-Z][a-zA-Z.'-]+\s+[A-Z][a-zA-Z.'-]+)\s+is\b/);
+    if (isMatch) return isMatch[1].trim();
+  }
+
+  return "";
+}
+
+function shouldUseEmployeeContext(question) {
+  const q = (question || "").toLowerCase();
+  if (!q) return false;
+  return (
+    q.includes("attendance") ||
+    q.includes("leave") ||
+    q.includes("salary") ||
+    q.includes("contact") ||
+    q.includes("details") ||
+    q.includes("info") ||
+    q.includes("profile")
+  );
+}
+
+function containsPronounReference(question) {
+  const q = (question || "").toLowerCase();
+  if (!q) return false;
+  return (
+    q.includes("his ") ||
+    q.includes("her ") ||
+    q.includes("their ") ||
+    q.includes("that employee") ||
+    q.includes("this employee") ||
+    q.includes("that person") ||
+    q.includes("this person")
+  );
+}
+
+function questionHasPersonName(question) {
+  const q = (question || "").trim();
+  if (!q) return false;
+  return /\b[A-Z][a-zA-Z.'-]+\s+[A-Z][a-zA-Z.'-]+\b/.test(q);
+}
+
+export async function runSqlChain(question, history = []) {
+  let normalizedQuestion = question || "";
+  const hasName = questionHasPersonName(normalizedQuestion);
+  const useContext = shouldUseEmployeeContext(normalizedQuestion);
+  const hasPronoun = containsPronounReference(normalizedQuestion);
+
+  if (!hasName && (useContext || hasPronoun)) {
+    const lastName = extractEmployeeNameFromHistory(history);
+    if (lastName) {
+      normalizedQuestion = `${normalizedQuestion} for ${lastName}`;
+    }
+  }
+
   let sql;
   try {
-    const normalizedQuestion = question || "";
     const ruleSql = buildRuleBasedSql(normalizedQuestion);
     if (ruleSql) {
       sql = ruleSql;

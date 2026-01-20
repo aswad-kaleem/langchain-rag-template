@@ -22,6 +22,9 @@ Hints:
 
 Return ONLY one word: DATABASE_QUERY, RAG_QUERY, or GENERAL_CHAT.
 
+Conversation history (most recent first):
+{history}
+
 User question:
 {question}`
 );
@@ -58,14 +61,18 @@ function ruleBasedIntent(question) {
   return null;
 }
 
-export async function classifyQuestionIntent(question) {
+export async function classifyQuestionIntent(question, history = []) {
   const rb = ruleBasedIntent(question || "");
   if (rb) {
     return rb;
   }
 
+  const historyText = buildHistoryText(history);
   const chain = buildIntentChain();
-  const raw = await chain.invoke({ question: question || "" });
+  const raw = await chain.invoke({
+    question: question || "",
+    history: historyText || "(none)"
+  });
   const normalized = (raw || "").trim().toUpperCase();
 
   if (normalized === "DATABASE_QUERY") return "DATABASE_QUERY";
@@ -82,4 +89,19 @@ export async function classifyQuestionIntent(question) {
   // Conservative fallback keeps chat safe and avoids accidental
   // database access when we are unsure.
   return "RAG_QUERY";
+}
+
+function buildHistoryText(history) {
+  if (!Array.isArray(history) || history.length === 0) return "";
+  return history
+    .slice(-10)
+    .reverse()
+    .map((msg) => {
+      const role = msg.role === "assistant" ? "Assistant" : "User";
+      const content = (msg.content || "").trim();
+      if (!content) return null;
+      return `${role}: ${content}`;
+    })
+    .filter(Boolean)
+    .join("\n");
 }
